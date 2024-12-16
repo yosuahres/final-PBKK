@@ -10,36 +10,43 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
-    const response = await fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(formData),
-    });
-  
-    const data = await response.json();
-    console.log("Response data:", data); // Log the entire response data
-    setMessage(data.message);
-  
-    if (response.ok) {
-      if (data.token) {
-        localStorage.setItem("token", data.token); // Store the token in local storage
-        localStorage.setItem("role", data.role); // Store the role in local storage
-        console.log("Token stored:", localStorage.getItem("token")); // Log the stored token
-        console.log("Role stored:", localStorage.getItem("role")); // Log the stored role
-        if (data.role === "admin") {
-          router.push("/admin-dashboard");
+    console.log("Form submitted with data:", formData);
+
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+      console.log("Response data:", data); // Log the entire response data
+      setMessage(data.message);
+
+      if (response.ok) {
+        if (data.token) {
+          localStorage.setItem("token", data.token); // Store the token in local storage
+          localStorage.setItem("role", data.role); // Store the role in local storage
+          console.log("Token stored:", localStorage.getItem("token")); // Log the stored token
+          console.log("Role stored:", localStorage.getItem("role")); // Log the stored role
+          if (data.role === "admin") {
+            console.log("Redirecting to admin dashboard");
+            router.push("/admin-dashboard");
+          } else {
+            console.log("Redirecting to user dashboard");
+            router.push("/dashboard");
+          }
         } else {
-          router.push("/dashboard");
+          console.error("Token not found in response");
         }
       } else {
-        console.error("Token not found in response");
+        console.error("Login failed:", data.message);
+        if (data.message === "User not found") {
+          router.push("/register");
+        }
       }
-    } else {
-      console.error("Login failed:", data.message);
-      if (data.message === "User not found") {
-        router.push("/register");
-      }
+    } catch (error) {
+      console.error("Error during login:", error);
     }
   };
 
