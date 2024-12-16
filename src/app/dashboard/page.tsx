@@ -1,47 +1,61 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import {jwtDecode} from "jwt-decode";
 
-export default function Home() {
-  const router = useRouter();
+export default function Dashboard() {
+  const [user, setUser] = useState<{ email: string } | null>(null);
   const [searchParams, setSearchParams] = useState({ jobName: "", location: "" });
   const [jobs, setJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
   const [submitted, setSubmitted] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    const token = localStorage.getItem("token");
+    if (token && token !== "undefined") {
+      try {
+        const userInfo = jwtDecode(token);
+        setUser(userInfo);
+      } catch (error) {
+        console.error("Invalid token", error);
+      }
+    } else {
+      console.error("Token not found");
+    }
+  }, [router]);
+
+  const handleLogout = async () => {
+    await fetch("/api/logout", { method: "POST" });
+    localStorage.removeItem("token");
+    router.push("/"); // Redirect to the landing page
+  };
+
+  const handleJobsApplied = () => {
+    router.push("/profile");
+  };
 
   const fetchJobs = async () => {
     try {
       const response = await fetch('/api/jobs');
       const data = await response.json();
-      setJobs(data);
+      const filteredJobs = data.filter(job =>
+        job.title.toLowerCase().includes(searchParams.jobName.toLowerCase()) &&
+        job.location.toLowerCase().includes(searchParams.location.toLowerCase())
+      );
+      setJobs(filteredJobs);
     } catch (error) {
-      console.error('Failed to fetch jobs:', error);
+      console.error('Failed to fetch jobs', error);
     }
   };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    const filteredJobs = jobs.filter(job =>
-      job.title.toLowerCase().includes(searchParams.jobName.toLowerCase()) &&
-      job.location.toLowerCase().includes(searchParams.location.toLowerCase())
-    );
-    setJobs(filteredJobs);
+    fetchJobs();
     setSubmitted(true);
-  };
-
-  const handleApply = (jobId: string) => {
-    const isLoggedIn = false; // Replace with actual login check
-    if (!isLoggedIn) {
-      router.push("/login");
-    } else {
-      router.push(`/apply/${jobId}`);
-    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -68,6 +82,15 @@ export default function Home() {
     setSelectedJob(job);
   };
 
+  const handleApply = (job) => {
+    const appliedJobs = JSON.parse(localStorage.getItem("appliedJobs") || "[]");
+    appliedJobs.push(job);
+    localStorage.setItem("appliedJobs", JSON.stringify(appliedJobs));
+    router.push(`/apply`);
+  };
+
+  if (!user) return <p>Loading...</p>;
+
   return (
     <div style={styles.container}>
       <nav style={styles.navbar}>
@@ -77,9 +100,15 @@ export default function Home() {
           <a href="/find-salaries" style={styles.navLink}>Find Salaries</a>
         </div>
         <div style={styles.navRight}>
-          <a href="/login" style={styles.navLink}>Sign In</a>
-          <span style={styles.separator}>|</span>
-          <a href="/login" style={styles.navLink}>Employers / Post Job</a>
+          <div style={styles.email} onClick={() => setDropdownOpen(!dropdownOpen)}>
+            {user.email} <span style={dropdownOpen ? styles.triangleUp : styles.triangleDown}></span>
+          </div>
+          {dropdownOpen && (
+            <div style={styles.dropdown}>
+              <button onClick={handleJobsApplied} style={styles.dropdownItem}>Profile</button>
+              <button onClick={handleLogout} style={styles.dropdownItem}>Sign Out</button>
+            </div>
+          )}
         </div>
       </nav>
       <div style={styles.searchContainer}>
@@ -136,7 +165,7 @@ export default function Home() {
               <h2 style={styles.jobTitle}>{selectedJob.title}</h2>
               <p style={styles.jobLocation}>{selectedJob.location}</p>
               <p style={styles.jobDescription}>{selectedJob.description}</p>
-              <button onClick={() => handleApply(selectedJob.id)} style={styles.applyButton}>Apply</button>
+              <button onClick={() => handleApply(selectedJob)} style={styles.applyButton}>Apply</button>
             </div>
           )}
         </div>
@@ -168,13 +197,60 @@ const styles = {
     gap: '1rem',
   },
   navRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
+    position: 'relative',
   },
   navLink: {
     color: '#007bff',
     textDecoration: 'none',
+    cursor: 'pointer',
+  },
+  email: {
+    color: '#007bff',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    padding: '0.5rem',
+    borderRadius: '4px',
+    backgroundColor: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  triangleDown: {
+    marginLeft: '0.5rem',
+    width: 0,
+    height: 0,
+    borderLeft: '5px solid transparent',
+    borderRight: '5px solid transparent',
+    borderTop: '5px solid #007bff',
+  },
+  triangleUp: {
+    marginLeft: '0.5rem',
+    width: 0,
+    height: 0,
+    borderLeft: '5px solid transparent',
+    borderRight: '5px solid transparent',
+    borderBottom: '5px solid #007bff',
+  },
+  dropdown: {
+    position: 'absolute',
+    right: 0,
+    top: '2.5rem',
+    backgroundColor: '#fff',
+    boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
+    borderRadius: '4px',
+    overflow: 'hidden',
+    zIndex: 1000,
+    width: '150px',
+  },
+  dropdownItem: {
+    padding: '0.5rem 1rem',
+    backgroundColor: '#fff',
+    border: 'none',
+    width: '100%',
+    textAlign: 'left',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    color: '#333',
+    borderBottom: '1px solid #ccc',
   },
   separator: {
     color: '#000',
