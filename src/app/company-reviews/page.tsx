@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 export default function CompanyReviews() {
   const router = useRouter();
@@ -15,7 +15,6 @@ export default function CompanyReviews() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    // Check if the user is logged in
     const token = localStorage.getItem("token");
     if (token) {
       setIsLoggedIn(true);
@@ -55,6 +54,10 @@ export default function CompanyReviews() {
     localStorage.removeItem("token");
     setIsLoggedIn(false);
     router.push("/login");
+  };
+
+  const handleSeeJobs = (companyId) => {
+    router.push(`/company-jobs?companyId=${companyId}`);
   };
 
   return (
@@ -130,8 +133,7 @@ export default function CompanyReviews() {
               <p style={styles.companyIndustry}>{company.types}</p>
               <p style={styles.companyDescription}>{company.company_description}</p>
               <div style={styles.buttonContainer}>
-                <button style={styles.exploreButton}>Explore</button>
-                <button style={styles.jobsButton}>See Jobs</button>
+                <button onClick={() => handleSeeJobs(company.id)} style={styles.jobsButton}>See Jobs</button>
               </div>
             </div>
           ))}
@@ -297,14 +299,6 @@ const styles = {
   buttonContainer: {
     display: 'flex',
     justifyContent: 'space-between',
-  },
-  exploreButton: {
-    padding: '0.5rem 1rem',
-    borderRadius: '4px',
-    border: 'none',
-    backgroundColor: '#007bff',
-    color: '#fff',
-    cursor: 'pointer',
   },
   jobsButton: {
     padding: '0.5rem 1rem',
